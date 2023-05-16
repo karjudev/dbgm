@@ -1,0 +1,83 @@
+version: '3.7'
+
+services:
+
+  # Apache Tika is used to parse documents to plain text
+  tika:
+    image: apache/tika:latest
+    ports:
+      - 127.0.0.1:9998:9998
+  
+  # First Elasticsearch is used to store the SpaCy examples and results
+  elastic-documents:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.1
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./data/elastic-documents:/usr/share/elasticsearch/data
+    ports:
+      - 127.0.0.1:9200:9200
+  
+  # Second Elasticsearch server is used to store anonymized sentences and perform queries
+  elastic-ordinances:
+    #build: ./elastic-ordinances
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.10.1
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - http.port=9201
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./data/elastic-ordinances:/usr/share/elasticsearch/data
+    ports:
+      - 127.0.0.1:9201:9201
+
+  # Anonymizer web app
+  anonymizer:
+    build: ./anonymizer
+    ports:
+      - 127.0.0.1:8080:8080
+    volumes:
+      - ./data/anonymizer:/usr/src
+    env_file:
+      - .env
+    depends_on:
+      - elastic-documents
+
+  # Search engine that performs the queries on the documents Elasticsearch server
+  search-engine:
+    build: ./search_engine
+    ports:
+      - 127.0.0.1:8081:8081
+    volumes:
+      - ./data/search_engine:/usr/src
+    env_file:
+      - .env
+    depends_on:
+      - elastic-ordinances
+
+  # Streamlit web app
+  streamlit:
+    build: ./streamlit
+    ports:
+      - 80:80
+    volumes:
+      - './data/streamlit:/usr/src/app/data:delegated'
+      - './streamlit:/usr/src/app/project:delegated'
+    environment:
+      - USER_ID=1000
+      - GROUP_ID=1000
+    env_file:
+      - .env
+    depends_on:
+      - tika
+      - anonymizer
+      - search-engine
