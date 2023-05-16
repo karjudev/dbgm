@@ -17,3 +17,11 @@ To modify a single sub-service, head to its subdirectory (i.e. `./streamlit`) an
 ```bash
 $ python -r requirements.txt
 ```
+
+## Screenshots
+
+![Home page](https://github.com/karjudev/dbgm/blob/main/screenshots/home.png?raw=True)
+
+![Anonymizer](https://github.com/karjudev/dbgm/blob/main/screenshots/anonymizer.png?raw=True)
+
+![Search engine](https://github.com/karjudev/dbgm/blob/main/screenshots/search.png?raw=True)
