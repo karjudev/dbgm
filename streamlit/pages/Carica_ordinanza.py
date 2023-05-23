@@ -18,17 +18,15 @@ from services.selections import (
     selections_to_json,
     selections_to_annotated_text,
 )
-from services.visualization import COURTS as VISUALIZATION_COURTS
-from constants import MEASURE_TYPES
 
-# Possible institutions
-INSTITUTIONS: List[str] = ["Tribunale di Sorveglianza", "Ufficio di Sorveglianza"]
-
-# All the "Tribunale di Sorveglianza" in Italy
-COURTS: List[str] = VISUALIZATION_COURTS.keys()
-
-# Possible outcomes
-OUTCOME_TYPES: List[str] = ["Concessa", "Rigettata"]
+from constants import (
+    COURTS,
+    INSTITUTIONS,
+    COURT_MEASURE_TYPES,
+    OFFICE_MEASURE_TYPES,
+    OFFICES,
+    OUTCOME_TYPES,
+)
 
 # Accepted file extensions
 FILE_EXTENSIONS: List[str] = ["doc", "docx", "odt", "rtf", "pdf", "txt"]
@@ -37,7 +35,7 @@ FILE_EXTENSIONS: List[str] = ["doc", "docx", "odt", "rtf", "pdf", "txt"]
 LABELS: List[str] = ["LOC", "MISC", "ORG", "PER", "TIME"]
 
 
-def _measures_selector() -> bool:
+def _measures_selector(is_court: bool) -> bool:
     # List of results, saved in the session
     results: List[Dict[str, str]] = st.session_state.get("results", [])
 
@@ -52,7 +50,9 @@ def _measures_selector() -> bool:
     left_column, center_column, right_column = st.columns(3)
     # Displays the data entry controls
     with left_column:
-        measure: str = st.selectbox("Misura", options=MEASURE_TYPES)
+        measure: str = st.selectbox(
+            "Misura", options=COURT_MEASURE_TYPES if is_court else OFFICE_MEASURE_TYPES
+        )
     with center_column:
         outcome: str = st.selectbox("Risultato", options=OUTCOME_TYPES)
     with right_column:
@@ -144,8 +144,10 @@ def ingest_ordinance() -> None:
     col_left, col_right = st.columns(2)
     with col_left:
         institution: str = st.selectbox("Istituzione", options=INSTITUTIONS)
+    # Flag that signals if the institution is a court or an office
+    is_court = institution == "Tribunale di Sorveglianza"
     with col_right:
-        court: str = st.selectbox("Corte di Appello di riferimento", options=COURTS)
+        court: str = st.selectbox("Luogo", options=COURTS if is_court else OFFICES)
     # Reads the file's content in normalized text form
     content: str = parse_document(uploaded_file)
     # Predicts the selections with the machine learning annotator
@@ -184,7 +186,7 @@ def ingest_ordinance() -> None:
     annotated_text(*annotations)
     # Collects type of measure and outcome
     st.header("Tipi di provvedimento")
-    selected: bool = _measures_selector()
+    selected: bool = _measures_selector(is_court)
     if not selected:
         st.warning("Seleziona almeno un tipo di provvedimento e un risultato")
         return

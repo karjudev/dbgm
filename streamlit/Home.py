@@ -1,9 +1,8 @@
-from datetime import datetime
 import streamlit as st
 from streamlit_folium import st_folium
 from auth import check_authentication
 from services.search_engine import (
-    get_count_ordinances,
+    get_summary,
     get_significant_keywords,
     get_stats,
     perform_query,
@@ -16,13 +15,20 @@ from services.visualization import (
     draw_wordcloud,
     get_court_information,
 )
-from constants import COURTS, MEASURE_TYPES
+from constants import (
+    COURT_MEASURE_TYPES,
+    COURTS,
+    INSTITUTIONS,
+    OFFICE_MEASURE_TYPES,
+    OFFICES,
+    OUTCOME_TYPES,
+)
 
 
 def __dashboard():
     # Downloads summary of court data
     try:
-        summary = get_count_ordinances()
+        summary = get_summary()
     except ValueError as e:
         st.error("Impossibile scaricare i dati della mappa.")
         st.error(str(e))
@@ -48,33 +54,44 @@ def __dashboard():
     with col_stats:
         if court_data is None:
             st.info(
-                "Clicca su un tribunale (icona verde) per visualizzare le informazioni associate."
+                "Clicca su un tribunale per visualizzare le informazioni associate."
             )
         else:
+            st.subheader(selected_court)
             st.dataframe(court_data, use_container_width=True)
         if court_wordcloud is not None:
+            st.subheader("Parole chiave significative")
             fig = draw_wordcloud(court_wordcloud)
             st.pyplot(fig)
 
 
 def __search_engine() -> None:
     # Search bar and filters
-    col_search, col_court, col_measures, col_outcome = st.columns(4)
+    col_search, col_institution, col_court, col_measures, col_outcome = st.columns(5)
     with col_search:
         text = st.text_input(label="Parole chiave")
+    with col_institution:
+        institution = st.selectbox(label="Istituzione", options=INSTITUTIONS)
+    is_court = institution == "Tribunale di Sorveglianza"
     with col_court:
         courts = st.multiselect(
-            label="Tribunali/Uffici di Sorveglianza", options=COURTS.keys()
+            label="Luogo",
+            options=COURTS if is_court else OFFICES,
         )
     with col_measures:
-        measures = st.multiselect(label="Provvedimento", options=MEASURE_TYPES)
+        measures = st.multiselect(
+            label="Provvedimento",
+            options=COURT_MEASURE_TYPES if is_court else OFFICE_MEASURE_TYPES,
+        )
     with col_outcome:
-        outcome = st.selectbox(
-            label="Esito", options=["Concessa", "Rigettata", "Tutti"], index=2
+        outcomes = st.multiselect(
+            label="Esito",
+            options=OUTCOME_TYPES,
+            default=OUTCOME_TYPES,
         )
     # Performs the query to the search engine
     try:
-        hits = perform_query(text, courts, measures, outcome)
+        hits = perform_query(text, institution, courts, measures, outcomes)
     except ValueError as e:
         st.error("Impossibile eseguire la query.")
         st.error(str(e))

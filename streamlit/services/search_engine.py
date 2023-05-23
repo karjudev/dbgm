@@ -115,10 +115,10 @@ def delete_ordinance(doc_id: str, base_url: str = None) -> None:
     get_json_response(response)
 
 
-def get_count_ordinances(
+def get_summary(
     base_url: str = None,
 ) -> Mapping[str, Mapping[str, Mapping[str, int]]]:
-    """Gets the count of ordinances per count and per t
+    """Gets the summary of ordinances per institute, court, measure and outcome
 
     Args:
         base_url (str, optional): Base URL of the service. Defaults to None.
@@ -132,11 +132,11 @@ def get_count_ordinances(
     if base_url is None:
         base_url = _get_search_engine_url()
     # Gets the service URL
-    url: str = base_url + "/ordinances/by_type_by_outcome"
+    url: str = base_url + "/ordinances/summary"
     # Performs the API call
     response: Response = requests.get(url)
-    counts = get_json_response(response)
-    return counts
+    summary = get_json_response(response)
+    return summary
 
 
 def get_significant_keywords(
@@ -165,9 +165,10 @@ def get_significant_keywords(
 
 def perform_query(
     text: Optional[str],
+    institution: str,
     courts: List[str],
     measures: List[str],
-    outcome: Optional[str],
+    outcomes: List[str],
     base_url: str = None,
     date_format: str = "%Y-%m-%d",
 ) -> List[Mapping[str, Any]]:
@@ -176,15 +177,16 @@ def perform_query(
     # Gets the service URL
     url: str = base_url + "/ordinances"
     # Builds the query params
-    params = {}
+    params = dict()
     if len(text) > 0:
         params["text"] = text
+    if len(institution) > 0:
+        params["institution"] = institution
     if len(courts) > 0:
         params["courts"] = courts
     if len(measures) > 0:
         params["measures"] = measures
-    if outcome != "Tutti":
-        params["outcome"] = outcome
+    params["outcomes"] = outcomes
     # Performs the request
     response: Response = requests.get(url, params=params)
     hits = get_json_response(response)

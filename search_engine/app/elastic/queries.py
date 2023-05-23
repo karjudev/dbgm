@@ -44,20 +44,25 @@ def count_ordinances_by_type_by_outcome(
     query_body = {
         "size": 0,
         "aggs": {
-            "courts": {
-                "terms": {"field": "court"},
+            "institutions": {
+                "terms": {"field": "institution.keyword"},
                 "aggs": {
-                    "measures": {
-                        "nested": {"path": "measures"},
+                    "courts": {
+                        "terms": {"field": "court"},
                         "aggs": {
-                            "measure_outcome": {
-                                "terms": {
-                                    "script": {
-                                        "source": "doc['measures.measure'].value + '|' + doc['measures.outcome'].value",
-                                        "lang": "painless",
-                                    },
-                                    "order": {"_key": "asc"},
-                                }
+                            "measures": {
+                                "nested": {"path": "measures"},
+                                "aggs": {
+                                    "measure_outcome": {
+                                        "terms": {
+                                            "script": {
+                                                "source": "doc['measures.measure'].value + '|' + doc['measures.outcome'].value",
+                                                "lang": "painless",
+                                            },
+                                            "order": {"_key": "asc"},
+                                        }
+                                    }
+                                },
                             }
                         },
                     }
@@ -67,14 +72,18 @@ def count_ordinances_by_type_by_outcome(
     }
     response = client.search(body=query_body, index=index)
     result = dict()
-    for court_bucket in response["aggregations"]["courts"]["buckets"]:
-        court = court_bucket["key"]
-        court_count = dict()
-        for bucket in court_bucket["measures"]["measure_outcome"]["buckets"]:
-            measure, outcome = bucket["key"].split("|")
-            count = bucket["doc_count"]
-            court_count.setdefault(measure, dict())[outcome] = count
-        result[court] = court_count
+    for institution_bucket in response["aggregations"]["institutions"]["buckets"]:
+        institution = institution_bucket["key"]
+        for court_bucket in institution_bucket["courts"]["buckets"]:
+            court = court_bucket["key"]
+            measures = dict()
+            for measure_outcome_bucket in court_bucket["measures"]["measure_outcome"][
+                "buckets"
+            ]:
+                measure, outcome = measure_outcome_bucket["key"].split("|")
+                count = measure_outcome_bucket["doc_count"]
+                measures.setdefault(measure, dict())[outcome] = count
+            result[institution + " - " + court] = measures
     return result
 
 
@@ -94,11 +103,16 @@ def extract_significant_keywords(
     query_body = {
         "size": 0,
         "aggs": {
-            "courts": {
-                "terms": {"field": "court"},
+            "institutions": {
+                "terms": {"field": "institution.keyword"},
                 "aggs": {
-                    "significant_keywords": {
-                        "significant_terms": {"field": "dictionary_keywords"}
+                    "courts": {
+                        "terms": {"field": "court"},
+                        "aggs": {
+                            "significant_keywords": {
+                                "significant_terms": {"field": "dictionary_keywords"}
+                            }
+                        },
                     }
                 },
             }
@@ -106,25 +120,28 @@ def extract_significant_keywords(
     }
     response = client.search(query_body, index=index)
     result = dict()
-    for court_bucket in response["aggregations"]["courts"]["buckets"]:
-        court = court_bucket["key"]
-        court_refs = {
-            bucket["key"]: bucket["score"]
-            for bucket in court_bucket["significant_keywords"]["buckets"]
-        }
-        # Normalizes the scores in the interval [0, 1]
-        total_score = sum(court_refs.values()) + 1e-16
-        court_refs = {key: score / total_score for key, score in court_refs.items()}
-        result[court] = court_refs
+    for institution_bucket in response["aggregations"]["institutions"]["buckets"]:
+        institution = institution_bucket["key"]
+        for court_bucket in institution_bucket["courts"]["buckets"]:
+            court = court_bucket["key"]
+            court_refs = {
+                bucket["key"]: bucket["score"]
+                for bucket in court_bucket["significant_keywords"]["buckets"]
+            }
+            # Normalizes the scores in the interval [0, 1]
+            total_score = sum(court_refs.values()) + 1e-16
+            court_refs = {key: score / total_score for key, score in court_refs.items()}
+            result[institution + " - " + court] = court_refs
     return result
 
 
 def query_ordinances(
     client: Elasticsearch,
     text: Optional[str],
+    institution: Optional[str],
     courts: Optional[List[str]],
     measures: Optional[List[str]],
-    outcome: Optional[str],
+    outcomes: Optional[List[str]],
     index: str = ES_INDEX_ORDINANCES,
     content_weight: int = 4,
     dictionary_weight: int = 3,
@@ -194,12 +211,14 @@ def query_ordinances(
     filters = []
     if courts is not None:
         filters.append({"terms": {"court": courts}})
-    if measures is not None or outcome is not None:
+    if institution is not None:
+        filters.append({"term": {"institution.keyword": institution}})
+    if measures is not None or outcomes is not None:
         nested_filters = []
         if measures is not None:
             nested_filters.append({"terms": {"measures.measure": measures}})
-        if outcome is not None:
-            nested_filters.append({"term": {"measures.outcome": outcome}})
+        if outcomes is not None:
+            nested_filters.append({"terms": {"measures.outcome": outcomes}})
         filters.append(
             {
                 "nested": {

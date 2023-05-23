@@ -4,7 +4,14 @@ from typing import List, Mapping, Set
 from fastapi import FastAPI, status, HTTPException, Query
 import spacy
 
-from app.schema import MeasureType, Ordinance, OutcomeType, QueryResponse, Statistics
+from app.schema import (
+    InstitutionType,
+    MeasureType,
+    Ordinance,
+    OutcomeType,
+    QueryResponse,
+    Statistics,
+)
 from app.elastic.db import (
     connect_elasticsearch,
     insert_ordinance,
@@ -96,20 +103,23 @@ def put_ordinance(doc_id: str, ordinance: Ordinance) -> None:
 @app.get("/ordinances")
 def get_ordinances_by_query(
     text: str | None = Query(None),
+    institution: InstitutionType | None = Query(None),
     courts: List[str] | None = Query(None),
     measures: List[MeasureType] | None = Query(None),
-    outcome: OutcomeType | None = Query(None),
+    outcomes: List[OutcomeType] | None = Query(None),
 ) -> List[QueryResponse]:
     # Decodes optional measures and outcome
+    institution = None if institution is None else institution.value
     measures = None if measures is None else [m.value for m in measures]
-    outcome = None if outcome is None else outcome.value
+    outcomes = None if outcomes is None else [o.value for o in outcomes]
     # Performs the query
     response = query_ordinances(
         client,
         text=text,
+        institution=institution,
         courts=courts,
         measures=measures,
-        outcome=outcome,
+        outcomes=outcomes,
     )
     if response is None:
         raise HTTPException(
@@ -120,14 +130,14 @@ def get_ordinances_by_query(
     return response
 
 
-@app.get("/ordinances/by_type_by_outcome")
-def get_ordinances_count_type_outcome() -> (
+@app.get("/ordinances/summary")
+def get_ordinances_summary() -> (
     Mapping[str, Mapping[MeasureType, Mapping[OutcomeType, int]]]
 ):
     """Gets ordinance count.
 
     Returns:
-        Mapping[str, Mapping[MeasureType, Mapping[OutcomeType, int]]]: For each court, for each measure, for each outcome, its count.
+        Mapping[str, Mapping[MeasureType, Mapping[OutcomeType, int]]]: For each institution and each court for each measure, for each outcome, its count.
     """
     response = count_ordinances_by_type_by_outcome(client)
     return response
