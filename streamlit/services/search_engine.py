@@ -190,6 +190,17 @@ def perform_query(
     # Performs the request
     response: Response = requests.get(url, params=params)
     hits = get_json_response(response)
+    # Parses timestamps
     for hit in hits:
-        hit["timestamp"] = datetime.fromisoformat(hit["timestamp"]).strftime("%d/%m/%Y")
+        try:
+            hit["timestamp"] = datetime.fromisoformat(hit["timestamp"]).strftime(
+                "%d/%m/%Y"
+            )
+        except:
+            try:
+                hit["timestamp"] = datetime.fromtimestamp(
+                    float(hit["timestamp"])
+                ).strftime("%d/%m/%Y")
+            except Exception as e:
+                pass
     return hits
