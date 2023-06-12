@@ -1,3 +1,4 @@
+from datetime import date
 from enum import Enum
 from typing import List, Optional
 from pydantic import BaseModel
@@ -71,7 +72,12 @@ class Ordinance(BaseModel):
     court: str
     content: str
     measures: List[MeasureEntry]
+    publication_date: Optional[date]
     timestamp: Optional[int | str]
+
+
+class OrdinanceEntry(Ordinance):
+    doc_id: str
 
 
 class Statistics(BaseModel):
@@ -92,4 +98,4 @@ class QueryResponse(BaseModel):
     dictionary_keywords: List[str]
     ner_keywords: List[str]
     court: str
-    timestamp: str
+    publication_date: Optional[date]

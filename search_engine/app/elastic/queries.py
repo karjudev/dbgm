@@ -1,6 +1,25 @@
+from datetime import date
 from typing import List, Mapping, Optional, Tuple
 from elasticsearch import Elasticsearch
 from app.elastic.db import ES_INDEX_ORDINANCES
+
+
+def retrieve_ordinances_user(
+    client: Elasticsearch,
+    username: str,
+    search_from: int,
+    index: str = ES_INDEX_ORDINANCES,
+) -> List[Mapping]:
+    body = {
+        "query": {"term": {"username": username}},
+        "sort": {"timestamp": "desc"},
+        "from": search_from,
+    }
+    results = client.search(body=body, index=index)
+    return [
+        {"doc_id": result["_id"], **result["_source"]}
+        for result in results["hits"]["hits"]
+    ]
 
 
 def stats_ordinances(
@@ -155,7 +174,6 @@ def query_ordinances(
     # Default document fields
     if fields is None:
         fields = [
-            "timestamp",
             "institution",
             "content",
             "court",
@@ -163,6 +181,7 @@ def query_ordinances(
             "dictionary_keywords",
             "ner_keywords",
             "pos_keywords",
+            "publication_date",
         ]
     body = {
         "query": {"bool": {}},
@@ -246,3 +265,17 @@ def query_ordinances(
             {"highlight": highlight.replace("\n", "<br/>"), **hit["_source"]}
         )
     return results
+
+
+def edit_publication_date(
+    client: Elasticsearch,
+    doc_id: str,
+    publication_date: date,
+    index: str = ES_INDEX_ORDINANCES,
+) -> None:
+    client.update(
+        id=doc_id,
+        index=index,
+        body={"doc": {"publication_date": publication_date.strftime("%Y-%m-%d")}},
+        refresh=True,
+    )

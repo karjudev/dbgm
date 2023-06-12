@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, List, Dict, Mapping, Optional, Tuple
 
 import requests
@@ -53,6 +53,7 @@ def send_ordinance(
     content: str,
     entities: List[Dict],
     measures: List[Dict],
+    publication_date: datetime,
     base_url: str = None,
     timestamp: int | str = None,
 ) -> None:
@@ -86,6 +87,7 @@ def send_ordinance(
         "court": court,
         "content": content,
         "measures": measures,
+        "publication_date": publication_date.strftime("%Y-%m-%d"),
     }
     if timestamp is not None:
         body["timestamp"] = timestamp
@@ -113,6 +115,37 @@ def delete_ordinance(doc_id: str, base_url: str = None) -> None:
     # Performs the API call
     response: Response = requests.delete(url)
     get_json_response(response)
+
+
+def list_ordinances_user(
+    username: str, search_from: int = 0, base_url: str = None
+) -> List[Mapping]:
+    """Lists all the documents posted by the user.
+
+    Args:
+        username (str): User to list.
+        search_from (int, optional): Search index to use as a starting point. Defaults to 0.
+        base_url (str, optional): Base URL of the service. Defaults to None.
+
+    Raises:
+        ValueError: If there is an error in the HTTP API.
+
+    Returns:
+        List[Mapping]: List of entries in the form `{"doc_id": ..., "filename": ...}`
+    """
+    if base_url is None:
+        base_url = _get_search_engine_url()
+    url: str = base_url + "/ordinances/user"
+    params = {"username": username, "search_from": search_from}
+    response: Response = requests.get(url, params=params)
+    entries: List[Dict] = get_json_response(response)
+    for entry in entries:
+        entry["content"] = entry["content"].replace("\n", "<br/>")
+        if "publication_date" in entry and entry["publication_date"] is not None:
+            entry["publication_date"] = datetime.strptime(
+                entry["publication_date"], "%Y-%m-%d"
+            ).date()
+    return entries
 
 
 def get_summary(
@@ -170,7 +203,6 @@ def perform_query(
     measures: List[str],
     outcomes: List[str],
     base_url: str = None,
-    date_format: str = "%Y-%m-%d",
 ) -> List[Mapping[str, Any]]:
     if base_url is None:
         base_url = _get_search_engine_url()
@@ -204,3 +236,15 @@ def perform_query(
             except Exception as e:
                 pass
     return hits
+
+
+def edit_publication_date(
+    doc_id: str, publication_date: date, base_url: str = None
+) -> None:
+    if base_url is None:
+        base_url = _get_search_engine_url()
+    # Gets the service URL
+    url: str = base_url + "/dates/" + doc_id
+    params = {"publication_date": publication_date.strftime("%Y-%m-%d")}
+    response: Response = requests.put(url, params=params)
+    get_json_response(response)

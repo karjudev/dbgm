@@ -35,10 +35,3 @@ class AnnotatedDocument(BaseModel):
     predicted: List[Span]
     ground_truth: List[Span]
     timestamp: Optional[int | str]
-
-
-class AnnotatedDocumentEntry(BaseModel):
-    """Entry that describes a document."""
-
-    doc_id: str
-    filename: str

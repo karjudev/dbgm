@@ -1,9 +1,8 @@
 from hashlib import sha512
 import os
 from time import time
-from typing import Any, List, Mapping, Optional
+from typing import Any, Mapping, Optional
 from elasticsearch import Elasticsearch, ConflictError, NotFoundError
-from elasticsearch.helpers import scan
 
 from app.schema import AnnotatedDocument
 
@@ -104,34 +103,6 @@ def retrieve_document(
         return result["_source"]
     except NotFoundError:
         return None
-
-
-def retrieve_documents_user(
-    client: Elasticsearch, username: str, index: str = ES_INDEX
-) -> List[Mapping[str, str]]:
-    """Retrieves all the documents for a given user.
-    Args:
-        client (Elasticsearch): Connection to Elasticsearch.
-        username (str): Username.
-        index (str, optional): Index on Elasticsearch. Defaults to ES_INDEX.
-    Returns:
-        List[Mapping[str, str]]: List of entries.
-    """
-    results = scan(
-        client=client,
-        index=index,
-        query={
-            "query": {"term": {"username": username}},
-            "_source": ["filename"],
-            "sort": {"timestamp": "desc"},
-        },
-        preserve_order=True,
-    )
-    documents = [
-        {"doc_id": result["_id"], "filename": result["_source"]["filename"]}
-        for result in results
-    ]
-    return documents
 
 
 def remove_document(client: Elasticsearch, doc_id: str, index: str = ES_INDEX) -> bool:

@@ -105,11 +105,13 @@ def __search_engine() -> None:
         pos_keywords = ", ".join(hit["pos_keywords"])
         ner_keywords = ", ".join(hit["ner_keywords"])
         with st.container():
-            st.header(f"📃 {hit['institution']} di {hit['court']} - {hit['timestamp']}")
+            st.header(f"📃 {hit['institution']} di {hit['court']}")
             col_preview, col_stats = st.columns([2, 1])
             with col_preview:
                 st.write(hit["highlight"], unsafe_allow_html=True)
             with col_stats:
+                if hit["publication_date"]:
+                    st.write(f"🕑 **Data di Pubblicazione**: {hit['publication_date']}")
                 for measure in hit["measures"]:
                     st.write(f"🧭 **{measure['measure']}** - *{measure['outcome']}*")
             st.markdown(f"📌 **Riferimenti Normativi**: {ner_keywords}")

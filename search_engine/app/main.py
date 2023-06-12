@@ -1,3 +1,4 @@
+from datetime import date
 import os
 from pathlib import Path
 from typing import List, Mapping, Set
@@ -8,6 +9,7 @@ from app.schema import (
     InstitutionType,
     MeasureType,
     Ordinance,
+    OrdinanceEntry,
     OutcomeType,
     QueryResponse,
     Statistics,
@@ -19,6 +21,8 @@ from app.elastic.db import (
     retrieve_ordinance,
 )
 from app.elastic.queries import (
+    edit_publication_date,
+    retrieve_ordinances_user,
     count_ordinances_by_type_by_outcome,
     extract_significant_keywords,
     query_ordinances,
@@ -91,6 +95,7 @@ def put_ordinance(doc_id: str, ordinance: Ordinance) -> None:
         dictionary_keywords=dict_keywords,
         ner_keywords=ner_keywords,
         pos_keywords=pos_keywords,
+        publication_date=ordinance.publication_date,
         timestamp=ordinance.timestamp,
     )
     if not stored:
@@ -128,6 +133,13 @@ def get_ordinances_by_query(
         )
     # Returns the response
     return response
+
+
+@app.get("/ordinances/user")
+def get_ordinances_user(
+    username: str = Query(...), search_from: int = Query(0)
+) -> List[OrdinanceEntry]:
+    return retrieve_ordinances_user(client, username, search_from)
 
 
 @app.get("/ordinances/summary")
@@ -203,3 +215,8 @@ def get_significant_references() -> Mapping[str, Mapping[str, float]]:
     """
     response = extract_significant_keywords(client)
     return response
+
+
+@app.put("/dates/{doc_id}", status_code=status.HTTP_202_ACCEPTED)
+def put_publication_date(doc_id: str, publication_date: date = Query(...)) -> None:
+    edit_publication_date(client, doc_id, publication_date)

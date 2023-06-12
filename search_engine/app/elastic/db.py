@@ -1,3 +1,4 @@
+from datetime import date
 import os
 from time import time
 from typing import Any, List, Mapping, Optional
@@ -26,6 +27,7 @@ ES_MAPPING = {
         "dictionary_keywords": {"type": "keyword"},
         "ner_keywords": {"type": "keyword"},
         "pos_keywords": {"type": "keyword"},
+        "publication_date": {"type": "date", "format": "yyyy-MM-dd"},
     }
 }
 
@@ -67,6 +69,7 @@ def insert_ordinance(
     dictionary_keywords: List[str],
     ner_keywords: List[str],
     pos_keywords: List[str],
+    publication_date: date,
     timestamp: float = None,
     index: str = ES_INDEX_ORDINANCES,
 ) -> bool:
@@ -83,6 +86,7 @@ def insert_ordinance(
         dictionary_keywords (List[str]): Keywords coming from the juridic dictionary.
         ner_keywords (List[str]): Keywords from the NER model.
         pos_keywords (List[str]): Keywords from the POS taggers.
+        publication_date (date): Date of the publication.
         timestamp (float, optional): Timestamp to use. Defaults to None.
         index (str, optional): Elasticsearch index. Defaults to ES_INDEX_ORDINANCES.
     Returns:
@@ -103,6 +107,7 @@ def insert_ordinance(
         "dictionary_keywords": dictionary_keywords,
         "ner_keywords": ner_keywords,
         "pos_keywords": pos_keywords,
+        "publication_date": publication_date.strftime("%Y-%m-%d"),
     }
     try:
         client.create(index=index, id=doc_id, body=body, refresh=True)

@@ -6,12 +6,11 @@ from app.elastic.db import (
     connect_elasticsearch,
     insert_document,
     retrieve_document,
-    retrieve_documents_user,
     remove_document,
 )
 from app.model.architecture import NERAnnotator
 
-from app.schema import AnnotatedDocument, AnnotatedDocumentEntry, Span, Text
+from app.schema import AnnotatedDocument, Span, Text
 
 
 app = FastAPI()
@@ -95,20 +94,6 @@ def get_document(doc_id: str) -> AnnotatedDocument:
             detail=f"Document ID {doc_id} not found.",
         )
     return document
-
-
-@app.get("/documents")
-def get_documents_user(username: str) -> List[AnnotatedDocumentEntry]:
-    """Gets the documents posted by a user.
-
-    Args:
-        username (str): Username.
-
-    Returns:
-        List[AnnotatedDocumentEntry]: List of entries with document ID and filename.
-    """
-    documents = retrieve_documents_user(client, username)
-    return documents
 
 
 @app.delete("/documents/{doc_id}")

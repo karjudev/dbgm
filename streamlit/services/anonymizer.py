@@ -143,27 +143,6 @@ def get_annotated_document(
     return document
 
 
-def list_documents_user(username: str, base_url: str = None) -> List[Mapping]:
-    """Lists all the documents posted by the user.
-
-    Args:
-        username (str): User to list.
-        base_url (str, optional): Base URL of the service. Defaults to None.
-
-    Raises:
-        ValueError: If there is an error in the HTTP API.
-
-    Returns:
-        List[Mapping]: List of entries in the form `{"doc_id": ..., "filename": ...}`
-    """
-    if base_url is None:
-        base_url = _get_anonymizer_url()
-    url: str = base_url + "/documents"
-    response: Response = requests.get(url, params={"username": username})
-    entries: List[Dict] = get_json_response(response)
-    return entries
-
-
 def delete_document(doc_id: str, base_url: str = None) -> None:
     """Deletes a document from the server.
 

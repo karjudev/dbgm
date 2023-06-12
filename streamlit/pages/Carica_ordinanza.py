@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Dict, Tuple
 
 import streamlit as st
@@ -77,6 +78,7 @@ def _upload_document(
     predicted: List[Dict],
     ground_truth: List[Dict],
     measures: List[Dict],
+    publication_date: datetime,
 ) -> str:
     # Uploads the document to the anonymization service
     try:
@@ -91,7 +93,15 @@ def _upload_document(
         return None
     try:
         send_ordinance(
-            doc_id, username, filename, institution, court, text, ground_truth, measures
+            doc_id,
+            username,
+            filename,
+            institution,
+            court,
+            text,
+            ground_truth,
+            measures,
+            publication_date,
         )
     except ValueError as e:
         st.error(
@@ -140,14 +150,16 @@ def ingest_ordinance() -> None:
     filename: str = uploaded_file.name
     # Reads the username
     username: str = st.session_state["username"]
-    # Reads the institution and the court
-    col_left, col_right = st.columns(2)
-    with col_left:
+    # Reads the institution, the court and the date
+    col_institution, col_court, col_date = st.columns(3)
+    with col_institution:
         institution: str = st.selectbox("Istituzione", options=INSTITUTIONS)
     # Flag that signals if the institution is a court or an office
     is_court = institution == "Tribunale di Sorveglianza"
-    with col_right:
+    with col_court:
         court: str = st.selectbox("Luogo", options=COURTS if is_court else OFFICES)
+    with col_date:
+        publication_date: datetime = st.date_input("Data")
     # Reads the file's content in normalized text form
     content: str = parse_document(uploaded_file)
     # Predicts the selections with the machine learning annotator
@@ -208,6 +220,7 @@ def ingest_ordinance() -> None:
         predicted_annotations,
         corrected_annotations,
         measures,
+        publication_date,
     )
     if doc_id is not None:
         del st.session_state["results"]

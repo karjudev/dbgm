@@ -20,21 +20,12 @@ COURT_MEASURE_TYPES: List[str] = [
     "Altro",
 ]
 OFFICE_MEASURE_TYPES: List[str] = [
-    "Approvazione del programma di trattamento (art. 69 co. 5° o.p.)",
-    "Ammissione al lavoro all'esterno (artt. 21 co. 4° e 69 co. 5° o.p.)",
-    "Permesso di necessità (art. 30 o.p.)",
-    "Permesso premio (artt. 30-ter e 30-quater o.p.)",
     "Reclamo giurisdizionale (artt. 69 co. 6° lett. b) e 35-bis o.p.)",
     "Rimedio compensativo/risarcitorio per trattamento inumano e degradante (art. 35-ter o.p.)",
-    "Reclamo in ambito disciplinare (artt. 69 co. 6° lett a) e art. 35-bis o.p.)",
-    "Applicazione provvisoria di misure alternative (art. 47 co. 4° o.p.)",
-    "Liberazione anticipata (art. 69-bis o.p.)",
-    "Sospensione cautelativa delle misure alternative (art.51-ter o.p.)",
-    "Misure di sicurezza: applicazione, trasformazione e revoca (artt. 69 co. 4° o.p. e 679 c.p.p.)",
-    "Rinvio/sospensione in via provvisoria dell’esecuzione nei casi degli artt. 146-147 c.p. (art.684 co.2° c.p.p.",
-    "Rinvio/sospensione dell’esecuzione per sopravvenuta infermità psichica (art. 148 c.p.)",
-    "Esecuzione in detenzione (l. 199/2010)",
-    "Espulsione a titolo di misura alternativa (art. 16 co. 5° d.lsgl. 286/1998",
+    "Misure di sicurezza - Applicazione (artt. 69 co. 4° o.p. e 679 c.p.p.)",
+    "Misure di sicurezza - Esecuzione (artt. 69 co. 4° o.p. e 679 c.p.p.)",
+    "Misure di sicurezza - Trasformazione (artt. 69 co. 4° o.p. e 679 c.p.p.)",
+    "Misure di sicurezza - Revoca (artt. 69 co. 4° o.p. e 679 c.p.p.)",
 ]
 
 
@@ -50,7 +41,9 @@ OFFICE_PLACES: Mapping[str, Tuple[float, float]] = {
     "Bologna": (44.48962549242658, 11.343039146405689),
     "Firenze": (43.83314175277333, 11.277981220012585),
     "Firenze - Minorile": (43.775703898691916, 11.245387056858691),
+    "Genova": (44.40755522408492, 8.938316848443483),
     "Livorno": (43.5558316774945, 10.309321068396983),
+    "Massa": (44.03464459654947, 10.135436953700136),
     "Modena": (44.64620181710008, 10.929833989694327),
     "Perugia": (43.11122467926701, 12.389439293911613),
     "Pisa": (43.71488718189306, 10.4035431452194),
