@@ -64,22 +64,3 @@ def get_court_information(
         return None
     df = DataFrame.from_dict(court_data).fillna(0).astype(int).T
     return df
-
-
-def build_wordcloud(
-    data: Mapping[str, Mapping[str, float]],
-    institution_court: str,
-) -> WordCloud:
-    if institution_court is None:
-        return None
-    freq = data.get(institution_court)
-    if freq is None:
-        return None
-    return WordCloud(background_color="white").fit_words(freq)
-
-
-def draw_wordcloud(wordcloud: WordCloud) -> None:
-    fig, ax = plt.subplots()
-    ax.imshow(wordcloud, interpolation="bilinear")
-    ax.axis("off")
-    return fig

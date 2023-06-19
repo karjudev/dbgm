@@ -24,7 +24,6 @@ from app.elastic.queries import (
     edit_publication_date,
     retrieve_ordinances_user,
     count_ordinances_by_type_by_outcome,
-    extract_significant_keywords,
     query_ordinances,
     stats_ordinances,
 )
@@ -204,17 +203,6 @@ def get_stats() -> Statistics:
     """
     count, courts = stats_ordinances(client)
     return Statistics(count=count, courts=courts)
-
-
-@app.get("/keywords/significant")
-def get_significant_references() -> Mapping[str, Mapping[str, float]]:
-    """Gets the most significant juridic keywords for each court.
-
-    Returns:
-        Mapping[str, Mapping[str, float]]: For each court, for each significant keywords, its frequency.
-    """
-    response = extract_significant_keywords(client)
-    return response
 
 
 @app.put("/dates/{doc_id}", status_code=status.HTTP_202_ACCEPTED)

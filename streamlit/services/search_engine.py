@@ -172,30 +172,6 @@ def get_summary(
     return summary
 
 
-def get_significant_keywords(
-    base_url: str = None,
-) -> Mapping[str, Mapping[str, float]]:
-    """Gets the significant keywords for each court.
-
-    Args:
-        base_url (str, optional): _description_. Defaults to None.
-
-    Raises:
-        ValueError: If there is an error in the HTTP fetching.
-
-    Returns:
-        Mapping[str, Mapping[str, float]]: For each court, for each keyword, its frequency.
-    """
-    if base_url is None:
-        base_url = _get_search_engine_url()
-    # Gets the service URL
-    url: str = base_url + "/keywords/significant"
-    # Performs the API call
-    response: Response = requests.get(url)
-    body = get_json_response(response)
-    return body
-
-
 def perform_query(
     text: Optional[str],
     institution: str,

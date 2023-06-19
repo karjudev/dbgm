@@ -106,54 +106,6 @@ def count_ordinances_by_type_by_outcome(
     return result
 
 
-def extract_significant_keywords(
-    client: Elasticsearch, index: str = ES_INDEX_ORDINANCES
-) -> Mapping[str, Mapping[str, int]]:
-    """Extracts the significant keywords for each court.
-
-    Args:
-        client (Elasticsearch): Elasticsearch client.
-        index (str, optional): Index in Elasticsearch. Defaults to ES_INDEX_ORDINANCES.
-
-    Returns:
-        Mapping[str, Mapping[str, int]]: For each court, for each juridic keyword, its frequency.
-    """
-    # Performs the aggregations
-    query_body = {
-        "size": 0,
-        "aggs": {
-            "institutions": {
-                "terms": {"field": "institution.keyword"},
-                "aggs": {
-                    "courts": {
-                        "terms": {"field": "court"},
-                        "aggs": {
-                            "significant_keywords": {
-                                "significant_terms": {"field": "dictionary_keywords"}
-                            }
-                        },
-                    }
-                },
-            }
-        },
-    }
-    response = client.search(query_body, index=index)
-    result = dict()
-    for institution_bucket in response["aggregations"]["institutions"]["buckets"]:
-        institution = institution_bucket["key"]
-        for court_bucket in institution_bucket["courts"]["buckets"]:
-            court = court_bucket["key"]
-            court_refs = {
-                bucket["key"]: bucket["score"]
-                for bucket in court_bucket["significant_keywords"]["buckets"]
-            }
-            # Normalizes the scores in the interval [0, 1]
-            total_score = sum(court_refs.values()) + 1e-16
-            court_refs = {key: score / total_score for key, score in court_refs.items()}
-            result[institution + " - " + court] = court_refs
-    return result
-
-
 def query_ordinances(
     client: Elasticsearch,
     text: Optional[str],

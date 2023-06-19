@@ -3,7 +3,6 @@ from streamlit_folium import st_folium
 from auth import check_authentication
 from services.search_engine import (
     get_summary,
-    get_significant_keywords,
     get_stats,
     perform_query,
 )
@@ -11,8 +10,6 @@ from services.visualization import (
     HEIGHT,
     WIDTH,
     build_map,
-    build_wordcloud,
-    draw_wordcloud,
     get_court_information,
 )
 from constants import (
@@ -33,13 +30,6 @@ def __dashboard():
         st.error("Impossibile scaricare i dati della mappa.")
         st.error(str(e))
         return
-    # Downloads frequencies of juridic keywords
-    try:
-        keywords = get_significant_keywords()
-    except ValueError as e:
-        st.error("Impossibile scaricare le Word Cloud")
-        st.error(str(e))
-        return
     # Map of Italy
     col_map, col_stats = st.columns(2)
     with col_map:
@@ -50,7 +40,6 @@ def __dashboard():
     # Fetches the informations for the court
     court_data = get_court_information(summary, selected_court)
     # Creates the word cloud for the court
-    court_wordcloud = build_wordcloud(keywords, selected_court)
     with col_stats:
         if court_data is None:
             st.info(
@@ -59,10 +48,6 @@ def __dashboard():
         else:
             st.subheader(selected_court)
             st.dataframe(court_data, use_container_width=True)
-        if court_wordcloud is not None:
-            st.subheader("Parole chiave significative")
-            fig = draw_wordcloud(court_wordcloud)
-            st.pyplot(fig)
 
 
 def __search_engine() -> None:
