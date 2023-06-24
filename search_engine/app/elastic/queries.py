@@ -124,7 +124,7 @@ def query_ordinances(
     if courts is not None:
         filters.append({"terms": {"court": courts}})
     if institution is not None:
-        filters.append({"term": {"institution.keyword": institution}})
+        filters.append({"term": {"institution": institution}})
     if measures is not None or outcomes is not None:
         nested_filters = []
         if measures is not None:

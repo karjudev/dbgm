@@ -15,6 +15,7 @@ ES_MAPPING = {
         "timestamp": {"type": "date"},
         "username": {"type": "keyword"},
         "filename": {"type": "keyword"},
+        "institution": {"type": "keyword"},
         "court": {"type": "keyword"},
         "content": {"type": "text", "analyzer": "italian"},
         "measures": {
