@@ -58,7 +58,6 @@ def list_data_user() -> None:
     username: str = st.session_state["username"]
     # If available, gets the starting index
     search_from: int = st.session_state.get("search_from", 0)
-    st.title("Ordinanze caricate")
     # Ordinances of the user
     try:
         ordinances: List[Dict] = list_ordinances_user(username, search_from)
@@ -68,6 +67,8 @@ def list_data_user() -> None:
         return
     if len(ordinances) == 0:
         st.info("Non ci sono ordinanze da mostrare.")
+    st.title("Ordinanze caricate")
+    st.header(f"Ordinanze mostrate: da {search_from + 1} a {search_from + 10}")
     # Shows every ordinance in a container
     for i, ordinance in enumerate(ordinances):
         with st.container():

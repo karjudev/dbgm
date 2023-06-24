@@ -80,13 +80,6 @@ class OrdinanceEntry(Ordinance):
     doc_id: str
 
 
-class Statistics(BaseModel):
-    """Statistics about the ordinances in the documents."""
-
-    count: int
-    courts: int
-
-
 class QueryResponse(BaseModel):
     """Response entry to a query."""
 

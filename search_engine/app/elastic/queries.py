@@ -22,9 +22,7 @@ def retrieve_ordinances_user(
     ]
 
 
-def stats_ordinances(
-    client: Elasticsearch, index: str = ES_INDEX_ORDINANCES
-) -> Tuple[int, int]:
+def stats_ordinances(client: Elasticsearch, index: str = ES_INDEX_ORDINANCES) -> int:
     """Statistics about the documents.
 
     Args:
@@ -32,82 +30,16 @@ def stats_ordinances(
         index (str, optional): Index name. Defaults to ES_INDEX_ORDINANCES.
 
     Returns:
-        Tuple[int, int]: Number of documents and of courts.
+        int: Number of documents.
     """
     # Simple count of distinct documents
-    count = client.count(index=index)["count"]
-    # Approximated count of distinct court values
-    aggs_body = {
-        "size": 0,
-        "aggregations": {
-            "num_courts": {"cardinality": {"field": "court"}},
-        },
-    }
-    response = client.search(body=aggs_body, index=index)
-    courts = response["aggregations"]["num_courts"]["value"]
-    return count, courts
-
-
-def count_ordinances_by_type_by_outcome(
-    client: Elasticsearch, index: str = ES_INDEX_ORDINANCES
-) -> Mapping[str, Mapping[str, Mapping[str, int]]]:
-    """Counts the measures per type and per outcome.
-
-    Args:
-        client (Elasticsearch): Elasticsearch client.
-        index (str, optional): Index in Elasticsearch. Defaults to ES_INDEX_ORDINANCES.
-
-    Returns:
-        Mapping[str, Mapping[str, Mapping[str, int]]]: For each court, for each measure type, for each outcome, its count.
-    """
-    query_body = {
-        "size": 0,
-        "aggs": {
-            "institutions": {
-                "terms": {"field": "institution.keyword"},
-                "aggs": {
-                    "courts": {
-                        "terms": {"field": "court"},
-                        "aggs": {
-                            "measures": {
-                                "nested": {"path": "measures"},
-                                "aggs": {
-                                    "measure_outcome": {
-                                        "terms": {
-                                            "script": {
-                                                "source": "doc['measures.measure'].value + '|' + doc['measures.outcome'].value",
-                                                "lang": "painless",
-                                            },
-                                            "order": {"_key": "asc"},
-                                        }
-                                    }
-                                },
-                            }
-                        },
-                    }
-                },
-            }
-        },
-    }
-    response = client.search(body=query_body, index=index)
-    result = dict()
-    for institution_bucket in response["aggregations"]["institutions"]["buckets"]:
-        institution = institution_bucket["key"]
-        for court_bucket in institution_bucket["courts"]["buckets"]:
-            court = court_bucket["key"]
-            measures = dict()
-            for measure_outcome_bucket in court_bucket["measures"]["measure_outcome"][
-                "buckets"
-            ]:
-                measure, outcome = measure_outcome_bucket["key"].split("|")
-                count = measure_outcome_bucket["doc_count"]
-                measures.setdefault(measure, dict())[outcome] = count
-            result[institution + " - " + court] = measures
-    return result
+    return client.count(index=index)["count"]
 
 
 def query_ordinances(
     client: Elasticsearch,
+    start_date: date,
+    end_date: date,
     text: Optional[str],
     institution: Optional[str],
     courts: Optional[List[str]],
@@ -179,7 +111,16 @@ def query_ordinances(
             },
         ]
     # If provided, adds some filters
-    filters = []
+    filters = [
+        {
+            "range": {
+                "publication_date": {
+                    "gte": start_date.strftime("%Y-%m-%d"),
+                    "lte": end_date.strftime("%Y-%m-%d"),
+                }
+            }
+        }
+    ]
     if courts is not None:
         filters.append({"terms": {"court": courts}})
     if institution is not None:

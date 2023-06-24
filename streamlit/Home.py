@@ -1,9 +1,9 @@
+from datetime import date
 import streamlit as st
 from streamlit_folium import st_folium
 from auth import check_authentication
 from services.search_engine import (
-    get_summary,
-    get_stats,
+    get_count,
     perform_query,
 )
 from services.visualization import (
@@ -14,9 +14,11 @@ from services.visualization import (
 )
 from constants import (
     COURT_MEASURE_TYPES,
+    COURT_PLACES,
     COURTS,
     INSTITUTIONS,
     OFFICE_MEASURE_TYPES,
+    OFFICE_PLACES,
     OFFICES,
     OUTCOME_TYPES,
 )
@@ -24,37 +26,34 @@ from constants import (
 
 def __dashboard():
     # Downloads summary of court data
-    try:
-        summary = get_summary()
-    except ValueError as e:
-        st.error("Impossibile scaricare i dati della mappa.")
-        st.error(str(e))
-        return
-    # Map of Italy
-    col_map, col_stats = st.columns(2)
-    with col_map:
-        map = build_map(summary)
-        data = st_folium(map, width=WIDTH, height=HEIGHT)
-    # Last clicked tooltip is the one we show on the right-hand panel
-    selected_court = data.get("last_object_clicked_tooltip")
-    # Fetches the informations for the court
-    court_data = get_court_information(summary, selected_court)
-    # Creates the word cloud for the court
-    with col_stats:
-        if court_data is None:
-            st.info(
-                "Clicca su un tribunale per visualizzare le informazioni associate."
-            )
-        else:
-            st.subheader(selected_court)
-            st.dataframe(court_data, use_container_width=True)
+    col_courts, col_offices = st.columns(2)
+    with col_courts:
+        st.subheader("Tribunali di Sorveglianza")
+        map = build_map(COURT_PLACES, "green")
+        st_folium(map, width=WIDTH, height=HEIGHT)
+    with col_offices:
+        st.subheader("Uffici di Sorveglianza")
+        map = build_map(OFFICE_PLACES, "blue")
+        st_folium(map, width=WIDTH, height=HEIGHT)
 
 
 def __search_engine() -> None:
     # Search bar and filters
-    col_search, col_institution, col_court, col_measures, col_outcome = st.columns(5)
+    (
+        col_search,
+        col_daterange,
+        col_institution,
+        col_court,
+        col_measures,
+        col_outcome,
+    ) = st.columns(6)
     with col_search:
-        text = st.text_input(label="Parole chiave")
+        text = st.text_input(label="Termini della Ricerca")
+    with col_daterange:
+        start_date, end_date = st.date_input(
+            label="Intervallo temporale",
+            value=(date(year=1900, month=1, day=1), date.today()),
+        )
     with col_institution:
         institution = st.selectbox(label="Istituzione", options=INSTITUTIONS)
     is_court = institution == "Tribunale di Sorveglianza"
@@ -76,7 +75,9 @@ def __search_engine() -> None:
         )
     # Performs the query to the search engine
     try:
-        hits = perform_query(text, institution, courts, measures, outcomes)
+        hits = perform_query(
+            text, institution, courts, measures, outcomes, start_date, end_date
+        )
     except ValueError as e:
         st.error("Impossibile eseguire la query.")
         st.error(str(e))
@@ -119,18 +120,24 @@ def main() -> None:
         st.error("Questa pagina è accedibile solo dagli utenti registrati")
         return
     st.title("Database della Giurisprudenza di Merito")
-    # Search engine statistics
+    # Search engine number of documents
     try:
-        count, courts = get_stats()
+        num_docs = get_count()
     except ValueError as e:
         st.error("Impossibile scaricare le statistiche sulla piattaforma.")
         st.error(str(e))
         return
-    col_count, col_courts = st.columns(2)
+    # Number of courts
+    num_courts = len(COURT_PLACES.keys())
+    # Number of offices
+    num_offices = len(OFFICE_PLACES.keys())
+    col_count, col_courts, col_offices = st.columns(3)
     with col_count:
-        st.metric("Documenti indicizzati", count)
+        st.metric("Documenti indicizzati", num_docs)
     with col_courts:
-        st.metric("Tribunali di Sorveglianza", courts)
+        st.metric("Tribunali di Sorveglianza", num_courts)
+    with col_offices:
+        st.metric("Uffici di sorveglianza", num_offices)
     # Displays two tabs, one for dashboard and one for search engine
     tab_dashboard, tab_search_engine = st.tabs(
         ["🗺️ Statistiche", "🔍 Ricerca Ordinanze"]

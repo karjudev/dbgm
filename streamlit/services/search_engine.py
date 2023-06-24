@@ -23,8 +23,8 @@ def __redact_content(text: str, entities: List[Dict]) -> str:
     return text
 
 
-def get_stats(base_url: str = None) -> Tuple[int, int]:
-    """Downloads statistics about the documents in the service.
+def get_count(base_url: str = None) -> int:
+    """Downloads the number of documents in the service.
 
     Args:
         base_url (str, optional): Base URL of the service. Defaults to None.
@@ -33,15 +33,14 @@ def get_stats(base_url: str = None) -> Tuple[int, int]:
         ValueError: If there is an error in the HTTP fetching.
 
     Returns:
-        Tuple[int, int, datetime, datetime]: Count of the documents and of the courts.
+        int: Number of documents.
     """
     if base_url is None:
         base_url = _get_search_engine_url()
-    url: str = base_url + "/stats"
+    url: str = base_url + "/count"
     response: Response = requests.get(url)
     body = get_json_response(response)
-    count, courts = body["count"], body["courts"]
-    return count, courts
+    return body
 
 
 def send_ordinance(
@@ -148,36 +147,14 @@ def list_ordinances_user(
     return entries
 
 
-def get_summary(
-    base_url: str = None,
-) -> Mapping[str, Mapping[str, Mapping[str, int]]]:
-    """Gets the summary of ordinances per institute, court, measure and outcome
-
-    Args:
-        base_url (str, optional): Base URL of the service. Defaults to None.
-
-    Raises:
-        ValueError: If there is an error in the HTTP fetching.
-
-    Returns:
-        Mapping[str, Mapping[str, Mapping[str, int]]]: For each court, for each measure, for each outcome, its count.
-    """
-    if base_url is None:
-        base_url = _get_search_engine_url()
-    # Gets the service URL
-    url: str = base_url + "/ordinances/summary"
-    # Performs the API call
-    response: Response = requests.get(url)
-    summary = get_json_response(response)
-    return summary
-
-
 def perform_query(
     text: Optional[str],
     institution: str,
     courts: List[str],
     measures: List[str],
     outcomes: List[str],
+    start_date: date,
+    end_date: date,
     base_url: str = None,
 ) -> List[Mapping[str, Any]]:
     if base_url is None:
@@ -185,7 +162,10 @@ def perform_query(
     # Gets the service URL
     url: str = base_url + "/ordinances"
     # Builds the query params
-    params = dict()
+    params = {
+        "start_date": start_date.strftime("%Y-%d-%m"),
+        "end_date": end_date.strftime("%Y-%m-%d"),
+    }
     if len(text) > 0:
         params["text"] = text
     if len(institution) > 0:

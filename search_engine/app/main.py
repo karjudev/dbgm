@@ -12,7 +12,6 @@ from app.schema import (
     OrdinanceEntry,
     OutcomeType,
     QueryResponse,
-    Statistics,
 )
 from app.elastic.db import (
     connect_elasticsearch,
@@ -23,7 +22,6 @@ from app.elastic.db import (
 from app.elastic.queries import (
     edit_publication_date,
     retrieve_ordinances_user,
-    count_ordinances_by_type_by_outcome,
     query_ordinances,
     stats_ordinances,
 )
@@ -106,6 +104,8 @@ def put_ordinance(doc_id: str, ordinance: Ordinance) -> None:
 
 @app.get("/ordinances")
 def get_ordinances_by_query(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
     text: str | None = Query(None),
     institution: InstitutionType | None = Query(None),
     courts: List[str] | None = Query(None),
@@ -124,6 +124,8 @@ def get_ordinances_by_query(
         courts=courts,
         measures=measures,
         outcomes=outcomes,
+        start_date=start_date,
+        end_date=end_date,
     )
     if response is None:
         raise HTTPException(
@@ -139,19 +141,6 @@ def get_ordinances_user(
     username: str = Query(...), search_from: int = Query(0)
 ) -> List[OrdinanceEntry]:
     return retrieve_ordinances_user(client, username, search_from)
-
-
-@app.get("/ordinances/summary")
-def get_ordinances_summary() -> (
-    Mapping[str, Mapping[MeasureType, Mapping[OutcomeType, int]]]
-):
-    """Gets ordinance count.
-
-    Returns:
-        Mapping[str, Mapping[MeasureType, Mapping[OutcomeType, int]]]: For each institution and each court for each measure, for each outcome, its count.
-    """
-    response = count_ordinances_by_type_by_outcome(client)
-    return response
 
 
 @app.get("/ordinances/{doc_id}")
@@ -194,15 +183,15 @@ def delete_ordinance(doc_id: str) -> None:
         )
 
 
-@app.get("/stats")
-def get_stats() -> Statistics:
-    """Gets the statistics about documents in the service.
+@app.get("/count")
+def get_count() -> int:
+    """Gets the number of documents in the service.
 
     Returns:
         Statistics: Statistics around the documents.
     """
-    count, courts = stats_ordinances(client)
-    return Statistics(count=count, courts=courts)
+    num_docs = stats_ordinances(client)
+    return num_docs
 
 
 @app.put("/dates/{doc_id}", status_code=status.HTTP_202_ACCEPTED)
