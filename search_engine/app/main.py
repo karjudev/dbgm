@@ -10,7 +10,6 @@ from app.schema import (
     MeasureType,
     Ordinance,
     OrdinanceEntry,
-    OutcomeType,
     QueryResponse,
 )
 from app.elastic.db import (
@@ -76,7 +75,7 @@ def put_ordinance(doc_id: str, ordinance: Ordinance) -> None:
     pos_keywords: List[str] = detect_pos_keywords(doc, nlp.vocab)
     # Transforms the list of measure objects into a list of JSON objects
     measures: List[Mapping] = [
-        {"measure": entry.measure.value, "outcome": entry.outcome.value}
+        {"measure": entry.measure.value, "outcome": entry.outcome}
         for entry in ordinance.measures
     ]
     # Stores the document
@@ -110,12 +109,11 @@ def get_ordinances_by_query(
     institution: InstitutionType | None = Query(None),
     courts: List[str] | None = Query(None),
     measures: List[MeasureType] | None = Query(None),
-    outcomes: List[OutcomeType] | None = Query(None),
+    outcome: bool | None = Query(None),
 ) -> List[QueryResponse]:
-    # Decodes optional measures and outcome
+    # Decodes optional measures and institutions
     institution = None if institution is None else institution.value
     measures = None if measures is None else [m.value for m in measures]
-    outcomes = None if outcomes is None else [o.value for o in outcomes]
     # Performs the query
     response = query_ordinances(
         client,
@@ -123,7 +121,7 @@ def get_ordinances_by_query(
         institution=institution,
         courts=courts,
         measures=measures,
-        outcomes=outcomes,
+        outcome=outcome,
         start_date=start_date,
         end_date=end_date,
     )

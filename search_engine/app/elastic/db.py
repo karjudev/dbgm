@@ -22,13 +22,17 @@ ES_MAPPING = {
             "type": "nested",
             "properties": {
                 "measure": {"type": "keyword"},
-                "outcome": {"type": "keyword"},
+                "outcome": {"type": "boolean"},
             },
         },
         "dictionary_keywords": {"type": "keyword"},
         "ner_keywords": {"type": "keyword"},
         "pos_keywords": {"type": "keyword"},
-        "publication_date": {"type": "date", "format": "yyyy-MM-dd"},
+        "publication_date": {
+            "type": "date",
+            "format": "yyyy-MM-dd",
+            "null_value": "1900-01-01",
+        },
     }
 }
 

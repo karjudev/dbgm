@@ -10,7 +10,6 @@ from services.visualization import (
     HEIGHT,
     WIDTH,
     build_map,
-    get_court_information,
 )
 from constants import (
     COURT_MEASURE_TYPES,
@@ -68,15 +67,13 @@ def __search_engine() -> None:
             options=COURT_MEASURE_TYPES if is_court else OFFICE_MEASURE_TYPES,
         )
     with col_outcome:
-        outcomes = st.multiselect(
-            label="Esito",
-            options=OUTCOME_TYPES,
-            default=OUTCOME_TYPES,
+        outcome: str = st.selectbox(
+            label="Risultato", options=["Tutti", "Concesse", "Rigettate"]
         )
     # Performs the query to the search engine
     try:
         hits = perform_query(
-            text, institution, courts, measures, outcomes, start_date, end_date
+            text, institution, courts, measures, outcome, start_date, end_date
         )
     except ValueError as e:
         st.error("Impossibile eseguire la query.")
@@ -97,9 +94,15 @@ def __search_engine() -> None:
                 st.write(hit["highlight"], unsafe_allow_html=True)
             with col_stats:
                 if hit["publication_date"]:
-                    st.write(f"🕑 **Data di Pubblicazione**: {hit['publication_date']}")
+                    st.write(
+                        f"🕑 **Data di Pubblicazione**: {hit['publication_date'].strftime('%d/%m/%Y')}"
+                    )
                 for measure in hit["measures"]:
-                    st.write(f"🧭 **{measure['measure']}** - *{measure['outcome']}*")
+                    if is_court:
+                        outcome = "Concessa" if measure["outcome"] else "Rigettata"
+                    else:
+                        outcome = "Accolta" if measure["outcome"] else "Rigettata"
+                    st.write(f"🧭 **{measure['measure']}** - *{outcome}*")
             st.markdown(f"📌 **Riferimenti Normativi**: {ner_keywords}")
             st.markdown(f"📌 **Parole chiave giuridiche**: {dictionary_keywords}")
             st.markdown(f"📌 **Parole chiave**: {pos_keywords}")

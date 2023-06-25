@@ -40,11 +40,11 @@ def query_ordinances(
     client: Elasticsearch,
     start_date: date,
     end_date: date,
-    text: Optional[str],
-    institution: Optional[str],
-    courts: Optional[List[str]],
-    measures: Optional[List[str]],
-    outcomes: Optional[List[str]],
+    text: str | None,
+    institution: str | None,
+    courts: List[str] | None,
+    measures: List[str] | None,
+    outcome: bool | None,
     index: str = ES_INDEX_ORDINANCES,
     content_weight: int = 4,
     dictionary_weight: int = 3,
@@ -125,12 +125,12 @@ def query_ordinances(
         filters.append({"terms": {"court": courts}})
     if institution is not None:
         filters.append({"term": {"institution": institution}})
-    if measures is not None or outcomes is not None:
+    if measures is not None or outcome is not None:
         nested_filters = []
         if measures is not None:
             nested_filters.append({"terms": {"measures.measure": measures}})
-        if outcomes is not None:
-            nested_filters.append({"terms": {"measures.outcome": outcomes}})
+        if outcome is not None:
+            nested_filters.append({"term": {"measures.outcome": outcome}})
         filters.append(
             {
                 "nested": {

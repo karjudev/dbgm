@@ -49,18 +49,11 @@ class MeasureType(Enum):
     OTHER = "Altro"
 
 
-class OutcomeType(Enum):
-    """Type of outcom of a measure."""
-
-    CON = "Concessa"
-    REJ = "Rigettata"
-
-
 class MeasureEntry(BaseModel):
     """Tuple of a measure and its outcome."""
 
     measure: MeasureType
-    outcome: OutcomeType
+    outcome: bool
 
 
 class Ordinance(BaseModel):

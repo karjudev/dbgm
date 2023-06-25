@@ -152,7 +152,7 @@ def perform_query(
     institution: str,
     courts: List[str],
     measures: List[str],
-    outcomes: List[str],
+    outcome: str,
     start_date: date,
     end_date: date,
     base_url: str = None,
@@ -174,23 +174,19 @@ def perform_query(
         params["courts"] = courts
     if len(measures) > 0:
         params["measures"] = measures
-    params["outcomes"] = outcomes
+    if outcome != "Tutti":
+        params["outcome"] = outcome == "Concesse"
     # Performs the request
     response: Response = requests.get(url, params=params)
     hits = get_json_response(response)
     # Parses timestamps
     for hit in hits:
         try:
-            hit["timestamp"] = datetime.fromisoformat(hit["timestamp"]).strftime(
-                "%d/%m/%Y"
+            hit["publication_date"] = datetime.strptime(
+                hit["publication_date"], "%Y-%m-%d"
             )
         except:
-            try:
-                hit["timestamp"] = datetime.fromtimestamp(
-                    float(hit["timestamp"])
-                ).strftime("%d/%m/%Y")
-            except Exception as e:
-                pass
+            pass
     return hits
 
 
