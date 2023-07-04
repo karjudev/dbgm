@@ -25,7 +25,7 @@ from app.elastic.queries import (
     stats_ordinances,
 )
 from app.keywords.model import (
-    detect_pos_keywords,
+    detect_textrank_keywords,
     load_spacy_model,
     detect_juridic_references,
 )
@@ -71,9 +71,9 @@ def put_ordinance(doc_id: str, ordinance: Ordinance) -> None:
     dict_keywords: List[str] = detect_juridic_keywords(
         juridic_dictionary, ordinance.content
     )
-    # Extracts the POS keywords
-    pos_keywords: List[str] = detect_pos_keywords(doc, nlp.vocab)
-    # Transforms the list of measure objects into a list of JSON objects
+    # Extracts the TextRank keywords
+    textrank_keywords: List[str] = detect_textrank_keywords(doc)
+    # Transforms the list of measure keywords_objects into a list of JSON objects
     measures: List[Mapping] = [
         {"measure": entry.measure.value, "outcome": entry.outcome}
         for entry in ordinance.measures
@@ -90,7 +90,7 @@ def put_ordinance(doc_id: str, ordinance: Ordinance) -> None:
         measures=measures,
         dictionary_keywords=dict_keywords,
         ner_keywords=ner_keywords,
-        pos_keywords=pos_keywords,
+        textrank_keywords=textrank_keywords,
         publication_date=ordinance.publication_date,
         timestamp=ordinance.timestamp,
     )

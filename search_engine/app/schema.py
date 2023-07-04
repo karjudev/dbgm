@@ -80,8 +80,8 @@ class QueryResponse(BaseModel):
     content: str
     institution: InstitutionType
     measures: List[MeasureEntry]
-    pos_keywords: List[str]
     dictionary_keywords: List[str]
     ner_keywords: List[str]
+    textrank_keywords: List[str]
     court: str
     publication_date: Optional[date]

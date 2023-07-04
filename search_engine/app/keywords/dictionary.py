@@ -1,52 +1,42 @@
 from collections import Counter
+import heapq
 from pathlib import Path
 import re
 from typing import List, Set
+from flashtext import KeywordProcessor
 
 
-def load_juridic_dictionary(filename: Path) -> Set[str]:
+def load_juridic_dictionary(filename: Path) -> KeywordProcessor:
     """Loads the juridic dictionary from file.
 
     Args:
         filename (Path): Path of the file containing the scraped juridic keywords.
 
     Returns:
-        Set[str]: Set of juridic keywords.
+        KeywordProcessor: SProcessor able to extract keywords.
     """
-    keywords: Set[re.Pattern] = set()
-    with open(filename) as file:
-        for line in file:
-            keywords.add(line.strip())
-    return keywords
+    extractor = KeywordProcessor()
+    extractor.add_keyword_from_file(filename)
+    return extractor
 
 
 def detect_juridic_keywords(
-    keywords: Set[str], text: str, min_frequency: int = 1, top_k: int = 10
+    extractor: KeywordProcessor, text: str, size: int = 10
 ) -> List[str]:
     """Detects a juridic keywords from a set.
 
     Args:
-        keywords (Set[str]): Set of keywords.
+        extractor (KeywordProcessor): Keywords detector.
         text (str): Text to analyze.
-        min_frequency (int, optional): Minimum frequency of a keyword to be taken into account. Defaults to 1.
-        top_k (int, optional): Number of most common results to return. Defaults to 10.
+        size (int, optional): Number of keywords to return. Defaults to 10.
 
     Returns:
         List[str]: List of juridic keywords.
     """
-    vocabulary_matches = Counter()
-    matched_keywords = []
-    for keyword in keywords:
-        # Matches for the keywords
-        keyword_match: List[re.Match] = re.findall(
-            r"\b" + re.escape(keyword) + r"\b", text, flags=re.I
-        )
-        if not keyword_match or len(keyword_match) <= min_frequency:
-            continue
-        # Ensure longest match
-        if any([keyword in matched_kw for matched_kw in matched_keywords]):
-            continue
-        vocabulary_matches.update({keyword: len(keyword_match)})
-        matched_keywords.append(keyword)
-    # Extracts the top K keywords
-    return [match[0].lower() for match in vocabulary_matches.most_common(top_k)]
+    # Set of all the distinct keywords
+    keywords: Set[str] = set(extractor.extract_keywords(text))
+    # Top-k Keyword-occurrences pairs
+    top_keywords: List[str] = heapq.nlargest(
+        size, keywords, key=lambda kw: text.lower().count(kw.lower())
+    )
+    return top_keywords

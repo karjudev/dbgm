@@ -27,7 +27,7 @@ ES_MAPPING = {
         },
         "dictionary_keywords": {"type": "keyword"},
         "ner_keywords": {"type": "keyword"},
-        "pos_keywords": {"type": "keyword"},
+        "textrank_keywords": {"type": "keyword"},
         "publication_date": {
             "type": "date",
             "format": "yyyy-MM-dd",
@@ -73,7 +73,7 @@ def insert_ordinance(
     measures: List[Mapping],
     dictionary_keywords: List[str],
     ner_keywords: List[str],
-    pos_keywords: List[str],
+    textrank_keywords: List[str],
     publication_date: date,
     timestamp: float = None,
     index: str = ES_INDEX_ORDINANCES,
@@ -90,7 +90,7 @@ def insert_ordinance(
         measures (List[Mapping]): Measures of the ordinance with outcome.
         dictionary_keywords (List[str]): Keywords coming from the juridic dictionary.
         ner_keywords (List[str]): Keywords from the NER model.
-        pos_keywords (List[str]): Keywords from the POS taggers.
+        textrank_keywords (List[str]): Keywords from the TextRank algorithm.
         publication_date (date): Date of the publication.
         timestamp (float, optional): Timestamp to use. Defaults to None.
         index (str, optional): Elasticsearch index. Defaults to ES_INDEX_ORDINANCES.
@@ -111,7 +111,7 @@ def insert_ordinance(
         "measures": measures,
         "dictionary_keywords": dictionary_keywords,
         "ner_keywords": ner_keywords,
-        "pos_keywords": pos_keywords,
+        "textrank_keywords": textrank_keywords,
         "publication_date": publication_date.strftime("%Y-%m-%d"),
     }
     try:

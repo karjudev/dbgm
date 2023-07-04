@@ -85,7 +85,7 @@ def __search_engine() -> None:
     )
     for hit in hits:
         dictionary_keywords = ", ".join(hit["dictionary_keywords"])
-        pos_keywords = ", ".join(hit["pos_keywords"])
+        textrank_keywords = ", ".join(hit["textrank_keywords"])
         ner_keywords = ", ".join(hit["ner_keywords"])
         with st.container():
             st.header(f"📃 {hit['institution']} di {hit['court']}")
@@ -93,10 +93,8 @@ def __search_engine() -> None:
             with col_preview:
                 st.write(hit["highlight"], unsafe_allow_html=True)
             with col_stats:
-                if hit["publication_date"]:
-                    st.write(
-                        f"🕑 **Data di Pubblicazione**: {hit['publication_date'].strftime('%d/%m/%Y')}"
-                    )
+                if hit["publication_date"] != "1900-01-01":
+                    st.write(f"🕑 **Data di Pubblicazione**: {hit['publication_date']}")
                 for measure in hit["measures"]:
                     if is_court:
                         outcome = "Concessa" if measure["outcome"] else "Rigettata"
@@ -105,7 +103,7 @@ def __search_engine() -> None:
                     st.write(f"🧭 **{measure['measure']}** - *{outcome}*")
             st.markdown(f"📌 **Riferimenti Normativi**: {ner_keywords}")
             st.markdown(f"📌 **Parole chiave giuridiche**: {dictionary_keywords}")
-            st.markdown(f"📌 **Parole chiave**: {pos_keywords}")
+            st.markdown(f"📌 **Parole chiave**: {textrank_keywords}")
             with st.expander(
                 label="Clicca qui per leggere il testo completo dell'ordinanza"
             ):

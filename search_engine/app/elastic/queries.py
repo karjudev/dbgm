@@ -1,5 +1,5 @@
 from datetime import date
-from typing import List, Mapping, Optional, Tuple
+from typing import List, Mapping
 from elasticsearch import Elasticsearch
 from app.elastic.db import ES_INDEX_ORDINANCES
 
@@ -48,8 +48,8 @@ def query_ordinances(
     index: str = ES_INDEX_ORDINANCES,
     content_weight: int = 4,
     dictionary_weight: int = 3,
-    pos_weight: int = 2,
-    ner_weight: int = 1,
+    ner_weight: int = 2,
+    pos_weight: int = 1,
     fields: List[str] = None,
     pre_tag: str = "<b>",
     post_tag: str = "</b>",
@@ -64,7 +64,7 @@ def query_ordinances(
             "measures",
             "dictionary_keywords",
             "ner_keywords",
-            "pos_keywords",
+            "textrank_keywords",
             "publication_date",
         ]
     body = {
@@ -141,6 +141,7 @@ def query_ordinances(
         )
     if len(filters) > 0:
         body["query"]["bool"]["filter"] = filters
+    print(body, flush=True)
     # Performs the query
     response = client.search(body=body, index=index)
     # Collects the results

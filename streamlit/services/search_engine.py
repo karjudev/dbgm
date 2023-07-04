@@ -181,12 +181,14 @@ def perform_query(
     hits = get_json_response(response)
     # Parses timestamps
     for hit in hits:
-        try:
-            hit["publication_date"] = datetime.strptime(
-                hit["publication_date"], "%Y-%m-%d"
-            )
-        except:
-            pass
+        pub_date = hit.get("publication_date")
+        if pub_date and pub_date != "1900-01-01":
+            try:
+                hit["publication_date"] = datetime.strptime(
+                    pub_date, "%Y-%m-%d"
+                ).strftime("%d/%m/%Y")
+            except:
+                pass
     return hits
 
 
