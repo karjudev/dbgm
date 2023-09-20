@@ -1,56 +1,119 @@
-from typing import Mapping, Tuple
-from pandas import DataFrame
+from collections import defaultdict
+from typing import Iterable, Mapping, Tuple
+from matplotlib.figure import Figure
 import folium
+import altair as alt
+import pandas as pd
+
+from constants import COURT_PLACES, OFFICE_PLACES
 
 # Center coordinates
-LATITUDE = 44.06390660801779
-LONGITUDE = 11.453247070312502
+LATITUDE = 43.88601647043423
+LONGITUDE = 11.645507812500002
 # Standard width and height of the map
-WIDTH = 1000
-HEIGHT = 750
+WIDTH = 1600
+HEIGHT = 500
 # Zoom level
 ZOOM = 8
+# Graph font size
+FONT_SIZE = 12
 
 
-def __count_total(summary: Mapping[str, Mapping[str, int]]) -> Tuple[int, int]:
-    total = dict()
-    for _, measure_count in summary.items():
-        for outcome, count in measure_count.items():
-            outcome_count = total.setdefault(outcome, 0)
-            total[outcome] = outcome_count + count
-    granted = total.get("Concessa", 0)
-    rejected = total.get("Rigettata", 0)
-    return granted, rejected
-
-
-def build_map(
-    places: Mapping[str, Tuple[float, float]],
+def __create_points(
+    data: Iterable[str],
+    locations: Mapping[str, Tuple[float, float]],
     color: str,
+    institution: str,
+) -> Iterable[folium.Marker]:
+    for place in data:
+        location = locations.get(place)
+        if location is None:
+            continue
+        icon = folium.Icon(color=color)
+        tooltip = institution + " - " + place
+        marker = folium.Marker(location=location, tooltip=tooltip, icon=icon)
+        yield marker
+
+
+def create_map(
+    data: Mapping[str, Mapping],
+    court_locations: Mapping[str, Tuple[float, float]] = COURT_PLACES,
+    office_locations: Mapping[str, Tuple[float, float]] = OFFICE_PLACES,
     lat: float = LATITUDE,
     lng: float = LONGITUDE,
     zoom: int = ZOOM,
 ) -> folium.Map:
-    map = folium.Map(
+    data_map = folium.Map(
         location=[lat, lng],
         zoom_start=zoom,
         min_zoom=zoom,
-        zoom_control=False,
         max_zoom=zoom,
+        zoom_control=False,
     )
-    for place, location in places.items():
-        # A marker is red if the rejected are more than the granted, green otherwise
-        icon = folium.Icon(color=color)
-        folium.Marker(location=location, icon=icon, tooltip=place).add_to(map)
-    return map
+    for institution, places_data in data.items():
+        # Institution-specific parameters
+        if institution.startswith("Tribunale"):
+            color = "green"
+            locations = court_locations
+        else:
+            color = "blue"
+            locations = office_locations
+        # Adds points to the map
+        for marker in __create_points(
+            places_data.keys(), locations, color, institution
+        ):
+            marker.add_to(data_map)
+    return data_map
 
 
-def get_court_information(
-    data: Mapping[str, Mapping[str, Mapping[str, int]]], institution_court: str
-) -> DataFrame:
-    if institution_court is None:
-        return None
-    court_data = data.get(institution_court)
-    if court_data is None:
-        return None
-    df = DataFrame.from_dict(court_data).fillna(0).astype(int).T
-    return df
+def __to_records(
+    dictionary: Mapping[str, Mapping[str, Mapping]], true_label: str
+) -> Iterable[Mapping]:
+    records = []
+    for year, year_data in dictionary.items():
+        if year == "1900":
+            year = "Senza Data"
+        for measure, measure_data in year_data.items():
+            records.append(
+                {
+                    "Anno": year,
+                    "Misura": measure,
+                    "Esito": true_label,
+                    "Quantità": measure_data["true"],
+                }
+            )
+            records.append(
+                {
+                    "Anno": year,
+                    "Misura": measure,
+                    "Esito": "Rigettate",
+                    "Quantità": measure_data["false"],
+                }
+            )
+    return records
+
+
+def create_plot(data: Mapping[str, Mapping[str, Mapping]], is_court: bool) -> Figure:
+    true_label = "Concesse" if is_court else "Accolte"
+    records = __to_records(data, true_label)
+    df = pd.DataFrame.from_records(records)
+    chart = (
+        alt.Chart(df)
+        .mark_bar()
+        .properties(
+            width=180,
+            height=180,
+        )
+        .encode(
+            x="Anno:O",
+            y=alt.Y("sum(Quantità):Q", title="Numero Ordinanze"),
+            color="Esito:N",
+            facet=alt.Facet(
+                "Misura:N",
+                columns=3,
+                header=alt.Header(labelFontSize=FONT_SIZE),
+            ),
+        )
+        .configure_axis(labelFontSize=FONT_SIZE, titleFontSize=FONT_SIZE)
+    )
+    return chart

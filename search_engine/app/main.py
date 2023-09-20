@@ -7,6 +7,7 @@ import spacy
 
 from app.schema import (
     InstitutionType,
+    JuridicDataResponse,
     MeasureType,
     Ordinance,
     OrdinanceEntry,
@@ -16,24 +17,19 @@ from app.elastic.db import (
     connect_elasticsearch,
     insert_ordinance,
     remove_ordinance,
+    retrieve_juridic_data,
     retrieve_ordinance,
 )
 from app.elastic.queries import (
     edit_publication_date,
+    extract_keywords,
     retrieve_ordinances_user,
     query_ordinances,
     stats_ordinances,
 )
-from app.keywords.model import (
-    detect_textrank_keywords,
-    load_spacy_model,
-    detect_juridic_references,
-)
+from app.keywords.model import detect_textrank_keywords, load_spacy_model
 from app.keywords.dictionary import detect_juridic_keywords, load_juridic_dictionary
 
-
-# Directory of the SpaCy InformedPA model
-MODEL_DIR: Path = Path(os.getenv("SEARCH_INFORMEDPA_DIR"))
 # Filename of the juridic keywords file
 JURIDIC_KEYWORDS_FILENAME: Path = Path(os.getenv("SEARCH_JURIDIC_DICTIONARY"))
 
@@ -42,7 +38,7 @@ app = FastAPI()
 
 
 # Custom SpaCy model
-nlp: spacy.language.Language = load_spacy_model(MODEL_DIR)
+nlp: spacy.language.Language = load_spacy_model()
 
 # Set of juridic keywords
 juridic_dictionary: Set[str] = load_juridic_dictionary(JURIDIC_KEYWORDS_FILENAME)
@@ -63,21 +59,22 @@ def put_ordinance(doc_id: str, ordinance: Ordinance) -> None:
     Raises:
         HTTPException: If an ordinance with the same content already exists.
     """
-    # Parses the document with SpaCy
-    doc: spacy.language.Doc = nlp(ordinance.content)
-    # Extracts the juridic references
-    ner_keywords: List[str] = detect_juridic_references(doc)
-    # Extracts the juridic keywords
-    dict_keywords: List[str] = detect_juridic_keywords(
-        juridic_dictionary, ordinance.content
-    )
-    # Extracts the TextRank keywords
-    textrank_keywords: List[str] = detect_textrank_keywords(doc)
     # Transforms the list of measure keywords_objects into a list of JSON objects
     measures: List[Mapping] = [
         {"measure": entry.measure.value, "outcome": entry.outcome}
         for entry in ordinance.measures
     ]
+    # Parses the document with SpaCy
+    doc: spacy.language.Doc = nlp(ordinance.content)
+    # Extracts the dictionary keywords
+    dict_keywords: List[str] = detect_juridic_keywords(
+        juridic_dictionary, ordinance.content
+    )
+    # Extracts the TextRank keywords
+    textrank_keywords: List[str] = detect_textrank_keywords(doc)
+    # Extracts the juridic keywords
+    keywords, entities = extract_keywords(client, ordinance.content, measures)
+
     # Stores the document
     stored: bool = insert_ordinance(
         client=client,
@@ -89,8 +86,9 @@ def put_ordinance(doc_id: str, ordinance: Ordinance) -> None:
         content=ordinance.content,
         measures=measures,
         dictionary_keywords=dict_keywords,
-        ner_keywords=ner_keywords,
         textrank_keywords=textrank_keywords,
+        juridic_keywords=keywords,
+        juridic_entities=entities,
         publication_date=ordinance.publication_date,
         timestamp=ordinance.timestamp,
     )
@@ -101,16 +99,24 @@ def put_ordinance(doc_id: str, ordinance: Ordinance) -> None:
         )
 
 
+@app.get("/juridic_data")
+def get_juridic_data() -> JuridicDataResponse:
+    keywords, concepts = retrieve_juridic_data(client)
+    return {"keywords": keywords, "concepts": concepts}
+
+
 @app.get("/ordinances")
 def get_ordinances_by_query(
     start_date: date = Query(...),
     end_date: date = Query(...),
     text: str | None = Query(None),
+    keywords: List[str] | None = Query(None),
+    concepts: List[str] | None = Query(None),
     institution: InstitutionType | None = Query(None),
     courts: List[str] | None = Query(None),
     measures: List[MeasureType] | None = Query(None),
     outcome: bool | None = Query(None),
-) -> List[QueryResponse]:
+) -> QueryResponse:
     # Decodes optional measures and institutions
     institution = None if institution is None else institution.value
     measures = None if measures is None else [m.value for m in measures]
@@ -118,6 +124,8 @@ def get_ordinances_by_query(
     response = query_ordinances(
         client,
         text=text,
+        keywords=keywords,
+        concepts=concepts,
         institution=institution,
         courts=courts,
         measures=measures,
@@ -131,7 +139,14 @@ def get_ordinances_by_query(
             detail="Unable to perform the query",
         )
     # Returns the response
-    return response
+    aggregations, hits, keywords, concepts, num_hits = response
+    return {
+        "aggregations": aggregations,
+        "hits": hits,
+        "keywords": keywords,
+        "concepts": concepts,
+        "num_hits": num_hits,
+    }
 
 
 @app.get("/ordinances/user")
@@ -194,4 +209,9 @@ def get_count() -> int:
 
 @app.put("/dates/{doc_id}", status_code=status.HTTP_202_ACCEPTED)
 def put_publication_date(doc_id: str, publication_date: date = Query(...)) -> None:
-    edit_publication_date(client, doc_id, publication_date)
+    updated = edit_publication_date(client, doc_id, publication_date)
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Ordinance with document ID {doc_id} not found.",
+        )

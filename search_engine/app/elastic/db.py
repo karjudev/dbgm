@@ -1,18 +1,20 @@
 from datetime import date
 import os
 from time import time
-from typing import Any, List, Mapping, Optional
+from typing import Any, Iterable, List, Mapping, Optional, Tuple
 from elasticsearch import Elasticsearch, ConflictError
 from elasticsearch.exceptions import NotFoundError
+from elasticsearch.helpers import bulk
 
 ES_HOST = os.getenv("SEARCH_ES_HOST")
 ES_PORT = int(os.getenv("SEARCH_ES_PORT"))
 ES_INDEX_ORDINANCES = os.getenv("SEARCH_ES_INDEX_ORDINANCES")
+ES_INDEX_KEYWORDS = os.getenv("SEARCH_ES_INDEX_KEYWORDS")
 
 
-ES_MAPPING = {
+ES_MAPPING_ORDINANCES = {
     "properties": {
-        "timestamp": {"type": "date"},
+        "timestamp": {"type": "date", "format": "yyyy-MM-dd"},
         "username": {"type": "keyword"},
         "filename": {"type": "keyword"},
         "institution": {"type": "keyword"},
@@ -25,14 +27,29 @@ ES_MAPPING = {
                 "outcome": {"type": "boolean"},
             },
         },
-        "dictionary_keywords": {"type": "keyword"},
-        "ner_keywords": {"type": "keyword"},
-        "textrank_keywords": {"type": "keyword"},
         "publication_date": {
             "type": "date",
             "format": "yyyy-MM-dd",
             "null_value": "1900-01-01",
         },
+        "dictionary_keywords": {"type": "keyword"},
+        "textrank_keywords": {"type": "keyword"},
+        "juridic_keywords": {"type": "keyword"},
+        "juridic_concepts": {"type": "keyword"},
+    }
+}
+
+ES_MAPPING_KEYWORDS = {
+    "properties": {
+        "content": {"type": "text", "analyzer": "italian"},
+        "measures": {
+            "type": "nested",
+            "properties": {
+                "measure": {"type": "keyword"},
+                "outcome": {"type": "boolean"},
+            },
+        },
+        "query": {"type": "percolator"},
     }
 }
 
@@ -41,7 +58,7 @@ def connect_elasticsearch(
     host: str = ES_HOST,
     port: int = ES_PORT,
     index: str = ES_INDEX_ORDINANCES,
-    mapping: Mapping[str, Any] = ES_MAPPING,
+    mapping: Mapping[str, Any] = ES_MAPPING_ORDINANCES,
 ) -> Elasticsearch:
     """Connects to an Elasticsearch server.
 
@@ -72,8 +89,9 @@ def insert_ordinance(
     content: str,
     measures: List[Mapping],
     dictionary_keywords: List[str],
-    ner_keywords: List[str],
     textrank_keywords: List[str],
+    juridic_keywords: List[str],
+    juridic_entities: List[str],
     publication_date: date,
     timestamp: float = None,
     index: str = ES_INDEX_ORDINANCES,
@@ -88,9 +106,10 @@ def insert_ordinance(
         court (str): Court of the ordinance.
         content (str): Content of the ordinance (anonymized).
         measures (List[Mapping]): Measures of the ordinance with outcome.
-        dictionary_keywords (List[str]): Keywords coming from the juridic dictionary.
-        ner_keywords (List[str]): Keywords from the NER model.
+        dictionary_keywords (List[str]): Keywords coming from the dictionary.
         textrank_keywords (List[str]): Keywords from the TextRank algorithm.
+        juridic_keywords (List[str]): Keywords from the juridic search.
+        juridic_entities (List[str]): Entities associated to the juridic keywords.
         publication_date (date): Date of the publication.
         timestamp (float, optional): Timestamp to use. Defaults to None.
         index (str, optional): Elasticsearch index. Defaults to ES_INDEX_ORDINANCES.
@@ -110,8 +129,9 @@ def insert_ordinance(
         "content": content,
         "measures": measures,
         "dictionary_keywords": dictionary_keywords,
-        "ner_keywords": ner_keywords,
         "textrank_keywords": textrank_keywords,
+        "juridic_keywords": juridic_keywords,
+        "juridic_concepts": juridic_entities,
         "publication_date": publication_date.strftime("%Y-%m-%d"),
     }
     try:
@@ -155,3 +175,68 @@ def remove_ordinance(
         return True
     except NotFoundError:
         return False
+
+
+def is_index_populated(client: Elasticsearch, index: str) -> bool:
+    """Checks if an index is populated.
+
+    Args:
+        client (Elasticsearch): Connection to Elasticsearch.
+        index (str): Index to use.
+
+    Returns:
+        bool: If the Elasticsearch index is populated.
+    """
+    response = client.count(index=index)
+    return response["count"] > 0
+
+
+def bulk_upload(
+    client: Elasticsearch, records: Iterable[Mapping[str, str]], index: str
+) -> None:
+    """Performs a bulk upload on an Elasticsearch server.
+
+    Args:
+        client (Elasticsearch): Connection to Elasticsearch.
+        records (Iterable[Mapping[str, str]]): Records to store.
+        index (str): Index to use.
+        type (str): Type of records. Defaults to "_doc".
+    """
+    bulk(
+        client,
+        ({"_index": index, "_type": "_doc", "_source": record} for record in records),
+    )
+
+
+def retrieve_juridic_data(
+    client: Elasticsearch,
+    index: str = ES_INDEX_ORDINANCES,
+    max_count: int = 1_000_000_000,
+) -> Tuple[List[str], List[str]]:
+    """Retrieves all the juridic keywords and concepts.
+
+    Args:
+        client (Elasticsearch): Connection to Elasticsearch.
+        index (str, optional): Index to use. Defaults to ES_INDEX_ORDINANCES.
+        max_count (int, optional): Maximum cardinality of keywords and/or concepts. Defaults to 1_000_000_000.
+
+    Returns:
+        Tuple[List[str], List[str]]: List of keywords and list of concepts.
+    """
+    body = {
+        "size": 0,
+        "aggs": {
+            "keywords": {
+                "terms": {"field": "juridic_keywords", "size": max_count},
+            },
+            "concepts": {"terms": {"field": "juridic_concepts", "size": max_count}},
+        },
+    }
+    response = client.search(body=body, index=index)
+    keywords = [
+        bucket["key"] for bucket in response["aggregations"]["keywords"]["buckets"]
+    ]
+    concepts = [
+        bucket["key"] for bucket in response["aggregations"]["concepts"]["buckets"]
+    ]
+    return keywords, concepts

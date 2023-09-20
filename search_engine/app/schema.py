@@ -1,6 +1,6 @@
 from datetime import date
 from enum import Enum
-from typing import List, Optional
+from typing import List, Mapping, Optional
 from pydantic import BaseModel
 
 
@@ -73,15 +73,33 @@ class OrdinanceEntry(Ordinance):
     doc_id: str
 
 
-class QueryResponse(BaseModel):
+class QueryHit(BaseModel):
     """Response entry to a query."""
 
     highlight: str
     content: str
     institution: InstitutionType
-    measures: List[MeasureEntry]
-    dictionary_keywords: List[str]
-    ner_keywords: List[str]
-    textrank_keywords: List[str]
     court: str
+    measures: List[MeasureEntry]
     publication_date: Optional[date]
+    dictionary_keywords: List[str]
+    textrank_keywords: List[str]
+    juridic_keywords: List[str]
+    juridic_concepts: List[str]
+
+
+class QueryResponse(BaseModel):
+    """Response to a query, with aggregations and list of hits"""
+
+    aggregations: Mapping
+    hits: List[QueryHit]
+    keywords: List[str]
+    concepts: List[str]
+    num_hits: int
+
+
+class JuridicDataResponse(BaseModel):
+    """Response to a query for the juridic keywords and concepts."""
+
+    keywords: List[str]
+    concepts: List[str]

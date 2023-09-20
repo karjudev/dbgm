@@ -1,5 +1,4 @@
-from pickle import TUPLE2
-from typing import List, Mapping, Optional, Tuple
+from typing import List, Mapping, Tuple
 
 import torch
 from transformers import PreTrainedTokenizer

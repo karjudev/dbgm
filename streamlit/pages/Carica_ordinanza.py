@@ -33,7 +33,8 @@ from constants import (
 FILE_EXTENSIONS: List[str] = ["doc", "docx", "odt", "rtf", "pdf", "txt"]
 
 # Labels used to annotate
-LABELS: List[str] = ["LOC", "MISC", "ORG", "PER", "TIME"]
+# LABELS: List[str] = ["LOC", "MISC", "ORG", "PER", "TIME"]
+LABELS = ["LOC", "ORG", "PER", "TIME", "MISC"]
 
 
 def _measures_selector(is_court: bool) -> bool:

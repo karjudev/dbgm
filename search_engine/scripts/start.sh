@@ -24,8 +24,11 @@ function loop_until_connected {
 }
 
 loop_until_connected "${ELASTIC_ENDPOINT}" "Elasticsearch"
+>&2 echo "All services up and running."
 
->&2 echo "All services up and running, starting Search Engine"
+>&2 echo "Loading juridic dictionary from ${SEARCH_JURIDIC_KEYWORDS}"
+python /code/load_keywords.py "${SEARCH_JURIDIC_KEYWORDS}"
+>&2 echo "Starting the Search Engine"
 
 # Start the backend app
 uvicorn app.main:app --host "0.0.0.0" --port "8081"

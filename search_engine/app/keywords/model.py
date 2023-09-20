@@ -18,13 +18,10 @@ def set_custom_boundaries(doc: spacy.language.Doc) -> spacy.language.Doc:
     return doc
 
 
-def load_spacy_model(
-    informedpa_dir: Path, spacy_model: str = "it_core_news_sm"
-) -> spacy.language.Language:
+def load_spacy_model(spacy_model: str = "it_core_news_sm") -> spacy.language.Language:
     """Creates a custom SpaCy model.
 
     Args:
-        informedpa_dir (Path): Path of the InformedPA model, used to extract NER.
         spacy_model (str, optional): Name of the base SpaCy model. Defaults to "it_core_news_sm".
 
     Returns:
@@ -32,38 +29,11 @@ def load_spacy_model(
     """
     # Loads the base NLP model
     nlp = spacy.load(spacy_model)
-    # Loads the InformedPA model
-    informedpa_ner = spacy.load(informedpa_dir)
-    # Uses the same embeddings for ner and the rest of the model
-    informedpa_ner.replace_listeners("tok2vec", "ner", ["model.tok2vec"])
-    # Uses the NER pipeline of InformedPA into the base model
-    nlp.add_pipe("ner", source=informedpa_ner, name="ipa_ner", before="ner")
     # Adds the custom sentence boundary recognizer
     nlp.add_pipe("custom_sents_bounds", before="parser")
     # Adds the TextRank keyword extractor
     nlp.add_pipe("textrank")
     return nlp
-
-
-def detect_juridic_references(
-    doc: spacy.language.Doc, labels: Set[str] = None
-) -> List[str]:
-    """Extracts the juridic references from the text.
-
-    Args:
-        doc (spacy.language.Doc): Document parsed by SpaCy.
-        labels (Set[str], optional): Labels to capture. Defaults to None.
-
-    Returns:
-        List[str]: List of juridic keywords.
-    """
-    if labels is None:
-        labels = {"LAW", "ACT"}
-    references = []
-    for entity in doc.ents:
-        if entity.label_ in labels:
-            references.append(entity.text)
-    return references
 
 
 def detect_textrank_keywords(

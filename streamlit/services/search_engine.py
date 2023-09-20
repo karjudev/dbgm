@@ -97,6 +97,25 @@ def send_ordinance(
     get_json_response(response)
 
 
+def get_ordinance(doc_id: str, base_url: str = None) -> Mapping[str, Mapping]:
+    """Gets an ordinance from the server.
+
+    Args:
+        doc_id (str): Document ID
+        base_url (str, optional): Base URL of the service. Defaults to None.
+
+    Returns:
+        Mapping[str, Mapping]: Data representation of the complete ordinance.
+    """
+    if base_url is None:
+        base_url = _get_search_engine_url()
+    # Gets the service URL
+    url: str = base_url + "/ordinances/" + doc_id
+    # Retrieves the ordinance
+    response: Response = requests.get(url)
+    return get_json_response(response)
+
+
 def delete_ordinance(doc_id: str, base_url: str = None) -> None:
     """Deletes an ordinance from the search engine.
 
@@ -149,14 +168,16 @@ def list_ordinances_user(
 
 def perform_query(
     text: Optional[str],
+    keywords: List[str],
+    concepts: List[str],
     institution: str,
     courts: List[str],
     measures: List[str],
-    outcome: str,
+    outcome: List[str],
     start_date: date,
     end_date: date,
     base_url: str = None,
-) -> List[Mapping[str, Any]]:
+):
     if base_url is None:
         base_url = _get_search_engine_url()
     # Gets the service URL
@@ -168,28 +189,39 @@ def perform_query(
     }
     if len(text) > 0:
         params["text"] = text
-    if len(institution) > 0:
+    if len(keywords) > 0:
+        params["keywords"] = keywords
+    if len(concepts) > 0:
+        params["concepts"] = concepts
+    if len(institution) != 2:
         params["institution"] = institution
     if len(courts) > 0:
         params["courts"] = courts
     if len(measures) > 0:
         params["measures"] = measures
-    if outcome != "Tutti":
+    if len(outcome) == 1:
         params["outcome"] = outcome == "Concesse"
     # Performs the request
     response: Response = requests.get(url, params=params)
-    hits = get_json_response(response)
+    results = get_json_response(response)
+    aggregations, hits, keywords, concepts, num_hits = (
+        results["aggregations"],
+        results["hits"],
+        results["keywords"],
+        results["concepts"],
+        results["num_hits"],
+    )
     # Parses timestamps
     for hit in hits:
-        pub_date = hit.get("publication_date")
-        if pub_date and pub_date != "1900-01-01":
+        pub_date = hit.get("publication_date", "1900-01-01")
+        if pub_date != "1900-01-01":
             try:
                 hit["publication_date"] = datetime.strptime(
                     pub_date, "%Y-%m-%d"
                 ).strftime("%d/%m/%Y")
             except:
                 pass
-    return hits
+    return aggregations, hits, keywords, concepts, num_hits
 
 
 def edit_publication_date(
@@ -202,3 +234,13 @@ def edit_publication_date(
     params = {"publication_date": publication_date.strftime("%Y-%m-%d")}
     response: Response = requests.put(url, params=params)
     get_json_response(response)
+
+
+def list_keywords_concepts(base_url: str = None) -> Mapping[str, List[str]]:
+    if base_url is None:
+        base_url = _get_search_engine_url()
+    # Gets the service URL
+    url: str = base_url + "/juridic_data"
+    response: Response = requests.get(url)
+    data = get_json_response(response)
+    return data

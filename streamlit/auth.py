@@ -50,6 +50,7 @@ def check_authentication():
         with st.sidebar:
             st.info(f"Utente corrente: **{st.session_state['username']}**")
             st.button("Logout", on_click=logout)
+            st.divider()
         st.session_state["username"] = st.session_state["username"]
         return True
 

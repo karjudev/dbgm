@@ -94,7 +94,6 @@ def __merge_indices(
                 "court",
                 "measures",
                 "dictionary_keywords",
-                "ner_keywords",
                 "pos_keywords",
             ],
         )
